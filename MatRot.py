@@ -1,111 +1,132 @@
-class MatRot:
+class LetterMatrixTransformer:
     @staticmethod
     def main():
-        ip = HndlrInp()
-        sz_grd = ip.sz_rd_gd()
-        grd_let = ip.ltr_mat_rd(sz_grd)
-        cnt_qry = ip.rd_qry_cnt()
+        input_manager = InputHandler()
+        grid_size = input_manager.read_grid_size()
+        letter_grid = input_manager.read_letter_matrix(grid_size)
+        query_count = input_manager.read_query_count()
 
-        hnd_query = ProcQry()
-        for _ in range(cnt_qry):
-            query_params = ip.para_rd_qry()
-            hnd_query.rot_exec(grd_let, query_params[0], query_params[1], query_params[2])
+        query_handler = QueryProcessor()
+        for _ in range(query_count):
+            query_params = input_manager.read_query_parameters()
+            query_handler.execute_rotation(letter_grid, query_params[0], query_params[1], query_params[2])
 
-        MatRot.mat_finl(grd_let)
+        LetterMatrixTransformer.display_final_matrix(letter_grid)
 
     @staticmethod
-    def mat_finl(letter_matrix):
-        bldr_op = []
+    def display_final_matrix(letter_matrix):
+        output_builder = []
         for row in letter_matrix:
-            bldr_op.extend(row)
-        print(''.join(bldr_op))
+            output_builder.extend(row)
+        print(''.join(output_builder))
 
-class ProcQry:
-    def rot_exec(self, mat, bsr, bsc, sbm_size):
-        deplyr = sbm_size // 2
-        for lay_curnt in range(deplyr):
-            self.rot_layr(mat, bsr, bsc, sbm_size, lay_curnt)
 
-    def rot_layr(self, mat, bsr, bsc, sbm_size, layr):
-        ele_bod = self.bd_elexc(mat, bsr, bsc, sbm_size, layr)
-        fact_rot = layr + 1
-        ele_trnf = self.seqele_trsfm(ele_bod, fact_rot)
-        self.mat_bd_upd(mat, bsr, bsc, sbm_size, layr, ele_trnf)
+class QueryProcessor:
+    def execute_rotation(self, matrix, base_row, base_col, submatrix_size):
+        layer_depth = submatrix_size // 2
+        for current_layer in range(layer_depth):
+            self.perform_layer_rotation(matrix, base_row, base_col, submatrix_size, current_layer)
 
-    def bd_elexc(self, mat, bsr, bsc, sz, layr):
-        elmnts = []
-        rw_st = bsr + layr
-        rw_ed = bsr + sz - 1 - layr
-        cl_strt = bsc + layr
-        cl_ed = bsc + sz - 1 - layr
-        for i in range(cl_strt,cl_ed + 1):
-            elmnts.append(mat[rw_st][i])
+    def perform_layer_rotation(self, matrix, base_row, base_col, submatrix_size, layer):
+        border_elements = self.extract_border_elements(matrix, base_row, base_col, submatrix_size, layer)
+        rotation_factor = layer + 1
+        transformed_elements = self.transform_element_sequence(border_elements, rotation_factor)
+        self.update_matrix_border(matrix, base_row, base_col, submatrix_size, layer, transformed_elements)
 
-        for i in range(rw_st + 1, rw_ed):
-            elmnts.append(mat[i][cl_ed])
+    def extract_border_elements(self, matrix, base_row, base_col, size, layer):
+        elements = []
+        start_row = base_row + layer
+        end_row = base_row + size - 1 - layer
+        start_col = base_col + layer
+        end_col = base_col + size - 1 - layer
 
-        for i in range(cl_ed, cl_strt - 1, -1):
-            elmnts.append(mat[rw_ed][i])
+        # Top row (left to right)
+        for i in range(start_col, end_col + 1):
+            elements.append(matrix[start_row][i])
 
-        for i in range(rw_ed - 1, rw_st, -1):
-            elmnts.append(mat[i][cl_strt])
-        return elmnts
+        # Right column (top to bottom)
+        for i in range(start_row + 1, end_row):
+            elements.append(matrix[i][end_col])
 
-    def seqele_trsfm(self, sqnc, ind_rot):
-        rot_effect = ind_rot % len(sqnc)
-        if ind_rot % 2 == 1:
-            sqnc = sqnc[rot_effect:] + sqnc[:rot_effect]
-            return [self.ltr_shftbwd(symbol) for symbol in sqnc]
+        # Bottom row (right to left)
+        for i in range(end_col, start_col - 1, -1):
+            elements.append(matrix[end_row][i])
+
+        # Left column (bottom to top)
+        for i in range(end_row - 1, start_row, -1):
+            elements.append(matrix[i][start_col])
+
+        return elements
+
+    def transform_element_sequence(self, sequence, rotation_index):
+        effective_rotation = rotation_index % len(sequence)
+        if rotation_index % 2 == 1:
+            # Rotate left for odd rotations
+            sequence = sequence[effective_rotation:] + sequence[:effective_rotation]
+            # Shift letters backward (counter-clockwise)
+            return [self.shift_letter_backward(symbol) for symbol in sequence]
         else:
-            sqnc = sqnc[-rot_effect:] + sqnc[:-rot_effect]
-            return [self.ltr_shftfwd(symbol) for symbol in sqnc]
+            # Rotate right for even rotations
+            sequence = sequence[-effective_rotation:] + sequence[:-effective_rotation]
+            # Shift letters forward (clockwise)
+            return [self.shift_letter_forward(symbol) for symbol in sequence]
 
-    def mat_bd_upd(self, mat, bsr, bsc, sz, layr, ele_trnf):
-        rw_st = bsr + layr
-        rw_ed = bsr + sz - 1 - layr
-        cl_strt = bsc + layr
-        cl_ed = bsc + sz - 1 - layr
-        indx_ele = 0
+    def update_matrix_border(self, matrix, base_row, base_col, size, layer, transformed_elements):
+        start_row = base_row + layer
+        end_row = base_row + size - 1 - layer
+        start_col = base_col + layer
+        end_col = base_col + size - 1 - layer
 
-        for i in range(cl_strt, cl_ed + 1):
-            mat[rw_st][i] = ele_trnf[indx_ele]
-            indx_ele += 1
+        element_index = 0
 
-        for i in range(rw_st + 1, rw_ed):
-            mat[i][cl_ed] = ele_trnf[indx_ele]
-            indx_ele += 1
+        # Top row (left to right)
+        for i in range(start_col, end_col + 1):
+            matrix[start_row][i] = transformed_elements[element_index]
+            element_index += 1
 
-        for i in range(cl_ed, cl_strt - 1, -1):
-            mat[rw_ed][i] = ele_trnf[indx_ele]
-            indx_ele += 1
+        # Right column (top to bottom)
+        for i in range(start_row + 1, end_row):
+            matrix[i][end_col] = transformed_elements[element_index]
+            element_index += 1
 
-        for i in range(rw_ed - 1, rw_st, -1):
-            mat[i][cl_strt] = ele_trnf[indx_ele]
-            indx_ele += 1
+        # Bottom row (right to left)
+        for i in range(end_col, start_col - 1, -1):
+            matrix[end_row][i] = transformed_elements[element_index]
+            element_index += 1
 
-    def ltr_shftbwd(self, smbl):
-        return 'Z' if smbl == 'A' else chr(ord(smbl) - 1)
+        # Left column (bottom to top)
+        for i in range(end_row - 1, start_row, -1):
+            matrix[i][start_col] = transformed_elements[element_index]
+            element_index += 1
 
-    def ltr_shftfwd(self, symbl):
-        return 'A' if symbl == 'Z' else chr(ord(symbl) + 1)
-    
-class HndlrInp:
-    def sz_rd_gd(self):
+    def shift_letter_backward(self, symbol):
+        # Shift letter backwards, wrap around 'A' to 'Z'
+        return 'Z' if symbol == 'A' else chr(ord(symbol) - 1)
+
+    def shift_letter_forward(self, symbol):
+        # Shift letter forward, wrap around 'Z' to 'A'
+        return 'A' if symbol == 'Z' else chr(ord(symbol) + 1)
+
+
+class InputHandler:
+    def read_grid_size(self):
         return int(input().strip())
 
-    def ltr_mat_rd(self, sz_grd):
-        mat_let = []
-        for _ in range(sz_grd):
-            ele_rw = input().strip().split()
-            mat_let.append([char for char in ele_rw])
-        return mat_let
+    def read_letter_matrix(self, grid_size):
+        letter_matrix = []
+        for _ in range(grid_size):
+            row_elements = input().strip().split()
+            letter_matrix.append([char for char in row_elements])
+        return letter_matrix
 
-    def rd_qry_cnt(self):
+    def read_query_count(self):
         return int(input().strip())
 
-    def para_rd_qry(self):
-        det_qry = input().strip().split()
-        return [int(x) for x in det_qry]
+    def read_query_parameters(self):
+        query_details = input().strip().split()
+        return [int(x) for x in query_details]
 
+
+# To execute the program
 if __name__ == '__main__':
-    MatRot.main()
+    LetterMatrixTransformer.main()
